@@ -1,5 +1,7 @@
 # The GoogleAPI credentials for OAuth2
 credentials.json
+# The token gained by GoogleAPI OAuth2 in order to properly use API services
+token.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
