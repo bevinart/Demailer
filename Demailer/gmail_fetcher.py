@@ -1,22 +1,40 @@
 import os
+import base64
 from pathlib import Path
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-# NOTE: This class MUST have a token readily available in order to use this class. If you do not have a token, please refer to function 'get_user_token()' in class 'GoogleAPI'
-class GmailFetcher():
-    def __init__(self, token):
-        self.token = token
-    
-    # This class will return a specified number of emails from the token's inbox, starting at the offset
-    def get_inbox(self, num_of_emails, offset):
-        pass
+from googleapiclient.discovery import build
+
+# NOTE: This function REQUIRES a token in order to be used. To get a token, refer to the 'get_user_token()' function
+def get_inbox(creds, num_of_emails, offset):
+    # Getting access to the Gmail API with out credentials
+    service = build("gmail", "v1", credentials=creds)
+
+    # This is used to make a the API call v1.users.labels with the 'list' method, the userId being the current user's email address
+    inbox_results = service.users().messages().list(userId="me").execute()
+
+    # This is a JSON, the 'get()' function is used to get a certain key from it. If nothing is returned, the default value will be an empty array
+    emails = inbox_results.get("messages", [])
+    if not emails:
+        print("No emails found")
+        return None
+
+    return emails
+
+    # print("Emails:")
+    # for email in emails:
+    #     message_json = service.users().messages().get(userId="me", id=email["id"]).execute()
+
+    #     if message_json["payload"]["body"].get("data") is None:
+    #         continue
+
+    #     print(base64.urlsafe_b64decode(message_json["payload"]["body"]["data"]))
 
 
-
-# This function will return a JSON variable
+# This function will return a JSON used for grabbing anything from the Google APIs
 def get_user_token(cred_json_path, scopes):
     # Using pathlib in order to turn the string into a path that the system can read
     cred_json_path = Path(cred_json_path)
