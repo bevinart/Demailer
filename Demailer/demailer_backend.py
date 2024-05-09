@@ -9,63 +9,64 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 from googleapiclient.discovery import build
 
-service = None
+SCOPES = [
+    # SCOPE according to Google API: Read, compose, send, and permanently delete all your email from Gmail 
+    "https://mail.google.com/" 
+]
 
-# This function will return a JSON used for grabbing anything from the Google APIs
-def get_user_token(cred_json_path, scopes):
-    # Using pathlib in order to turn the string into a path that the system can read
-    cred_json_path = Path(cred_json_path)
-    
-    # token.json is used in order to prevent logging in everytime you run the application. It is made during this function, so if first time running, it will make one. 
-    token_json_path = Path(os.getcwd() + "/token.json")
-    creds = None
-    
-    # This is used to grab any valid tokens from the JSON file if there is any
-    if os.path.exists(token_json_path):
-        creds = Credentials.from_authorized_user_file(token_json_path, scopes)
-    
-    # If there are no creds available that are valid, Refresh or Login
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+class Demailer_Backend():
+    def __init__(self, cred_json_path=None):
+        self.creds = None # What the Google API uses to give you access
+        self.service = None # This is what we use to call the GmailAPI once gaining the credentials
+        
+        if cred_json_path == None:
+            self.cred_json_path = None
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(cred_json_path, scopes)
-            creds = flow.run_local_server(port=0)
+            formatted_path = Path(cred_json_path)
+            if not os.path.exists(formatted_path):
+                return 1
+            self.cred_json_path = formatted_path
 
-    # Save the creds for the next time the application is ran
-    with open(token_json_path, "w") as token_file:
-        token_file.write(creds.to_json())
+    # This function will return a JSON used for grabbing anything from the Google APIs
+    def get_user_token(cred_json_path=None, token_json_path=os.getcwd()+"/token.json"):
+        # Using pathlib in order to turn the string into a path that the system can read
+        if cred_json_path != None:
+            self.cred_json_path = Path(cred_json_path)
+        if not os.path.exists(self.cred_json_path):
+            return 1
+        
+        # token.json is used in order to prevent logging in everytime you run the application. It is made during this function, so if first time running, it will make one. 
+        token_json_path = Path(token_json_path)
+        if not os.path.exists(token_json_path):
+            return 2
+        
+        # This is used to grab any valid tokens from the JSON file if there is any
+        self.creds = Credentials.from_authorized_user_file(token_json_path, SCOPES)
+        
+        # If there are no creds available that are valid, Refresh or Login
+        if not self.creds or not self.creds.valid:
+            if self.creds and self.creds.expired and self.creds.refresh_token:
+                self.creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(self.cred_json_path, SCOPES)
+                self.creds = flow.run_local_server(port=0)
 
-    # Getting access to the Gmail API with out credentials
-    # We put this here because we will be accessing it throughout many different functions
-    service = build("gmail", "v1", credentials=creds)
+        # Save the creds for the next time the application is ran
+        with open(token_json_path, "w") as token_file:
+            token_file.write(self.creds.to_json())
 
-    return creds
+        # Getting access to the Gmail API with out credentials
+        # We put this here because we will be accessing it throughout many different functions
+        self.service = build("gmail", "v1", credentials=self.creds)
+
+        return
+
+    def get_message(self, message_id):
+        pass
+
+    def _get_inbox(self, num_of_emails=25, offset=0):
+        pass
 
 
-def get_message(message_id):
-    pass
 
-
-# NOTE: This function REQUIRES a token in order to be used. To get a token, refer to the 'get_user_token()' function
-def _get_inbox(creds, num_of_emails, offset):
-    # This is used to make a the API call v1.users.labels with the 'list' method, the userId being the current user's email address
-    inbox_results = service.users().messages().list(userId="me").execute()
-
-    # This is a JSON, the 'get()' function is used to get a certain key from it. If nothing is returned, the default value will be an empty array
-    emails = inbox_results.get("messages", [])
-    if not emails:
-        print("No emails found")
-        return None
-
-    return emails
-
-    # print("Emails:")
-    # for email in emails:
-    #     message_json = service.users().messages().get(userId="me", id=email["id"]).execute()
-
-    #     if message_json["payload"]["body"].get("data") is None:
-    #         continue
-
-    #     print(base64.urlsafe_b64decode(message_json["payload"]["body"]["data"]))
 
